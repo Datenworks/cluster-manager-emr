@@ -1,27 +1,3 @@
-resource "aws_emr_security_configuration" "default" {
-  count = var.encryption_enabled ? 1 : 0
-
-  name = var.security_configuration_name
-
-  configuration = jsonencode({
-    EncryptionConfiguration = {
-      AtRestEncryptionConfiguration = {
-        S3EncryptionConfiguration = {
-          EncryptionMode = (var.kms_encrypt_key_for_s3 != "") ? "SSE-KMS" : "SSE-S3"
-          AwsKmsKey      = var.kms_encrypt_key_for_s3
-        }
-        LocalDiskEncryptionConfiguration = {
-          EnableEbsEncryption       = true
-          EncryptionKeyProviderType = "AwsKms"
-          AwsKmsKey                 = var.kms_encrypt_key_for_ebs
-        }
-      }
-      EnableInTransitEncryption = false
-      EnableAtRestEncryption    = true
-    }
-  })
-}
-
 # EMR EC2 Configurations
 data "aws_iam_policy_document" "emr_ec2_default_assume_role_policy" {
   statement {

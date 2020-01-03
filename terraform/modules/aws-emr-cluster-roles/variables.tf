@@ -16,12 +16,6 @@ variable "encryption_enabled" {
   default     = false
 }
 
-variable "security_configuration_name" {
-  description = "Name for the Security Configuration in AWS EMR"
-  type        = string
-  default     = "default-emr-encryption"
-}
-
 variable "aditional_policies_arns" {
   description = "List of ARN for the aditional policies for the AWS Step Functions role"
   type        = list(string)
