@@ -1,0 +1,97 @@
+---
+service: cluster-job-manager
+
+frameworkVersion: ">=1.30.0 <2.0.0"
+
+provider:
+  name: aws
+  stage: ${env:ENV, 'dev'}
+  runtime: python3.7
+
+plugins:
+  - serverless-python-requirements
+custom:
+  pythonRequirements:
+    dockerizePip: 'non-linux'
+
+package:
+  excludeDevDependencies: true
+  exclude:
+    - .circleci/**
+    - .vscode/**
+    - test/**
+    - developer-eggs/**
+    - node_modules/**
+    - Dockerfile
+    - Makefile
+    - README.md
+    - terraform/**
+
+functions:
+  integration:
+    handler: handlers/integration.execute
+    timeout: 300
+    environment:
+      EMR_SUBNET_ID: 'subnet-039b1477d868db026'
+      LOG_BUCKET: 's3://datenworks-emr-logs'
+  monitor_cluster_step:
+    role: emrTriggerRole
+    handler: handlers/monitor.execute
+  create_and_submit:
+    handler: handlers/create_and_submit.execute
+    role: emrTriggerRole
+    timeout: 900
+
+resources:
+  Resources:
+    emrTriggerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: EmrTriggerRole
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: EmrTriggerPolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - ec2:CreateNetworkInterface
+                    - ec2:DescribeNetworkInterfaces
+                    - ec2:DetachNetworkInterface
+                    - ec2:DeleteNetworkInterface
+                  Resource: "*"
+                - Effect: Allow
+                  Action:
+                    - elasticmapreduce:RunJobFlow
+                    - elasticmapreduce:ListSteps
+                    - elasticmapreduce:TerminateJobFlows
+                  Resource: '*'
+                - Effect: Allow
+                  Action:
+                    - iam:PassRole
+                  Resource:
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:iam:'
+                          - Ref: 'AWS::AccountId'
+                          - 'role/EMR_DefaultRole'
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:iam:'
+                          - Ref: 'AWS::AccountId'
+                          - 'role/EMR_EC2_DefaultRole'
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:iam:'
+                          - Ref: 'AWS::AccountId'
+                          - 'role/EMR_AutoScaling_DefaultRole'

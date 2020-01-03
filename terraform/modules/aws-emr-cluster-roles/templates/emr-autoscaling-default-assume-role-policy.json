@@ -1,0 +1,16 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "sts:AssumeRole",
+            "Sid": "",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": [
+                    "elasticmapreduce.amazonaws.com",
+                    "application-autoscaling.amazonaws.com"
+                ]
+            }
+        }
+    ]
+}

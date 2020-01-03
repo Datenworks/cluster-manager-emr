@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+flake8 = "==3.7.7"
+pytest = "==4.4.0"
+pytest-cov = "==2.7.1"
+pytest-mock = "==1.10.3"
+
+[packages]
+avro-python3 = "==1.9.1"
+boto3 = "==1.9.222"
+python-json-logger = "==0.1.11"
+
+[requires]
+python_version = "3.7"
