@@ -84,29 +84,34 @@ This will delete the Serverless CloudFormation stack for this application and th
 ### Example
 Can be used by another State Machine, lambda or executed directly
 
-Payload:
+Payload received by the State Machine:
 ```
+
 {
-    "job_name": "the-name-of-the-job",
-    "resource": "resource beign executed",
-    "namespace": "the-namespace-to-mount-the-argument: namespace.argname=value",
-    "arguments": [
-        {
-            "argument": "argument-name",
-            "value": "the-value-of-arg"
-        }
-    ],
-    "code_files": "the-path-to-code-files-zip in s3",
-    "code_entrypoint": "the-code-file-that-will-be-executed",
-    "mem_executor": "optional, default is 16G",
-    "mem_driver": "optional, default is 8G",
-    "master_type": "optional, default is m5.xlarge",
-    "slave_type": "optional(core), default is m5.2xlarge",
-    "release": "emr_release",
-    "region": "emr_region",
-    "log_bucket": "uri for the log bucket",
-    "subnet": "subnet_id for execute the emr",
-    "spark_packages": ["package1", "package2", "keep empty if dont have"]
+    "data":{
+        "job_name": "the-name-of-the-job",
+        "resource": "resource beign executed",
+        "namespace": "the-namespace-to-mount-the-argument: namespace.argname=value",
+        "arguments": [
+            {
+                "argument": "argument-name",
+                "value": "the-value-of-arg"
+            }
+        ],
+        "code_files": "the-path-to-code-files-zip in s3",
+        "code_entrypoint": "the-code-file-that-will-be-executed",
+        "mem_executor": "optional, default is 16G",
+        "mem_driver": "optional, default is 8G",
+        "master_type": "optional, default is m5.xlarge",
+        "slave_type": "optional(core), default is m5.2xlarge",
+        "release": "emr_release",
+        "region": "emr_region",
+        "log_bucket": "uri for the log bucket",
+        "subnet": "subnet_id for execute the emr",
+        "spark_packages": ["package1", "package2", "keep empty if dont have"]
+    }
 }
 ```
+Also can be passed as base64 string.
+
 [![DatenWorks](https://www.datenworks.com/img/logo.png)](https://www.datenworks.com/)
