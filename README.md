@@ -120,5 +120,49 @@ Also can be passed as base64 string.
     "data": "eyJqb2JfbmFtZSI6ICJ0aGUtbmFtZS1vZi10aGUtam9iIiwgInJlc291cmNlIjogInJlc291cmNlIGJlaWduIGV4ZWN1dGVkIiwgIm5hbWVzcGFjZSI6ICJ0aGUtbmFtZXNwYWNlLXRvLW1vdW50LXRoZS1hcmd1bWVudDogbmFtZXNwYWNlLmFyZ25hbWU9dmFsdWUiLCAiYXJndW1lbnRzIjogW3siYXJndW1lbnQiOiAiYXJndW1lbnQtbmFtZSIsICJ2YWx1ZSI6ICJ0aGUtdmFsdWUtb2YtYXJnIn1dLCAiY29kZV9maWxlcyI6ICJ0aGUtcGF0aC10by1jb2RlLWZpbGVzLXppcCBpbiBzMyIsICJjb2RlX2VudHJ5cG9pbnQiOiAidGhlLWNvZGUtZmlsZS10aGF0LXdpbGwtYmUtZXhlY3V0ZWQiLCAibWVtX2V4ZWN1dG9yIjogIm9wdGlvbmFsLCBkZWZhdWx0IGlzIDE2RyIsICJtZW1fZHJpdmVyIjogIm9wdGlvbmFsLCBkZWZhdWx0IGlzIDhHIiwgIm1hc3Rlcl90eXBlIjogIm9wdGlvbmFsLCBkZWZhdWx0IGlzIG01LnhsYXJnZSIsICJzbGF2ZV90eXBlIjogIm9wdGlvbmFsKGNvcmUpLCBkZWZhdWx0IGlzIG01LjJ4bGFyZ2UiLCAicmVsZWFzZSI6ICJlbXJfcmVsZWFzZSIsICJyZWdpb24iOiAiZW1yX3JlZ2lvbiIsICJsb2dfYnVja2V0IjogInVyaSBmb3IgdGhlIGxvZyBidWNrZXQiLCAic3VibmV0IjogInN1Ym5ldF9pZCBmb3IgZXhlY3V0ZSB0aGUgZW1yIiwgInNwYXJrX3BhY2thZ2VzIjogWyJwYWNrYWdlMSIsICJwYWNrYWdlMiIsICJrZWVwIGVtcHR5IGlmIGRvbnQgaGF2ZSJdfQ=="
 }
 ```
+## Example
+
+Deploy the word-count example
+```
+make EXAMPLE_BUCKET="name-of-example-bucket" \
+    deploy-word-count
+```
+
+Payload to execute the example of wordcount:
+```
+{
+    "data":{
+        "name": "wordcount",
+        "resource": "resource-name",
+        "namespace": "wordcount",
+        "arguments": [
+            {
+                "argument": "input_bucket",
+                "value": "your-bucket-example"
+            },
+            {
+                "argument": "output_bucket",
+                "value": "your-bucket-example"
+            },
+            {
+                "argument": "key_path",
+                "value": "dataset/lorem.txt"
+            }
+        ],
+        "code_files": "s3://your-bucket-example/pyspark/wordcount.py",
+        "entrypoint": "s3://your-bucket-example/pyspark/wordcount.py",
+        "mem_executor": "8G",
+        "mem_driver": "4G",
+        "master_type": "m5.xlarge",
+        "count": "3",
+        "slave_type": "m5.2xlarge",
+        "release": "emr-5.28.0",
+        "region": "us-east-1",
+        "log_bucket": "your-log-bukcket-uri",
+        "subnet": "your-subnet",
+        "spark_packages": [""]
+    }
+}
+```
 
 [![DatenWorks](https://www.datenworks.com/img/logo.png)](https://www.datenworks.com/)

@@ -19,8 +19,8 @@ deploy:
 
 deploy-word-count:
 	cd example/ &&\
-	aws s3 cp wordcount.py "s3://datenworks-wordcount-example/pyspark/" &&\
-	aws s3 cp lorem.txt "s3://datenworks-wordcount-example/dataset/" &&\
+	aws s3 cp wordcount.py "s3://${EXAMPLE_BUCKET}/pyspark/" &&\
+	aws s3 cp lorem.txt "s3://${EXAMPLE_BUCKET}/dataset/" &&\
 	cd ../
 
 destroy:
