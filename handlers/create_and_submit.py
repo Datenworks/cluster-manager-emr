@@ -106,9 +106,11 @@ def execute(event, context):
                 }
             ]
 
-    arguments = ['spark-submit', '--packages', spark_packages,
+    arguments = ['spark-submit',
                  '--conf', f'spark.executor.memory={mem_executor}',
                  '--conf', f'spark.driver.memory={mem_driver}']
+    if spark_packages != '':
+        arguments.extend(['--packages', spark_packages])
 
     for custom_argument in custom_arguments:
         arguments.append(custom_argument['Key'])
@@ -119,7 +121,6 @@ def execute(event, context):
         arguments.append(event.get('pyfiles'))
 
     arguments.append(event.get('entrypoint'))
-
     response = connection.run_job_flow(
         Name=f'{job_name}-{resource}-spark-job',
         LogUri=event.get('log_bucket'),
@@ -131,7 +132,6 @@ def execute(event, context):
             'InstanceGroups': instance_groups,
             'Ec2SubnetId': event.get('subnet')
         },
-        SecurityConfiguration="emr-data-encryption",
         AutoScalingRole="EMR_AutoScaling_DefaultRole",
         VisibleToAllUsers=True,
         Steps=[{

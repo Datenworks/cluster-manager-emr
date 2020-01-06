@@ -48,6 +48,7 @@ make ENV=dev \
 ```
 
 There a Terraform module provisioning the resources into aws account.
+Apply the module to create the necessaries resources into your AWS Account
 
 - Create the State Machine responsible for Cluster Manager
 - Create e SNS Topic to receive messages when the Cluster Manager fails
@@ -89,7 +90,7 @@ Payload received by the State Machine:
 
 {
     "data":{
-        "job_name": "the-name-of-the-job",
+        "name": "the-name-of-the-job",
         "resource": "resource beign executed",
         "namespace": "the-namespace-to-mount-the-argument: namespace.argname=value",
         "arguments": [
@@ -99,11 +100,12 @@ Payload received by the State Machine:
             }
         ],
         "code_files": "the-path-to-code-files-zip in s3",
-        "code_entrypoint": "the-code-file-that-will-be-executed",
+        "entrypoint": "the-code-file-that-will-be-executed",
         "mem_executor": "optional, default is 16G",
         "mem_driver": "optional, default is 8G",
         "master_type": "optional, default is m5.xlarge",
         "slave_type": "optional(core), default is m5.2xlarge",
+        "count": "3",
         "release": "emr_release",
         "region": "emr_region",
         "log_bucket": "uri for the log bucket",

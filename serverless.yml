@@ -28,12 +28,6 @@ package:
     - terraform/**
 
 functions:
-  integration:
-    handler: handlers/integration.execute
-    timeout: 300
-    environment:
-      EMR_SUBNET_ID: 'subnet-039b1477d868db026'
-      LOG_BUCKET: 's3://datenworks-emr-logs'
   monitor_cluster_step:
     role: emrTriggerRole
     handler: handlers/monitor.execute
