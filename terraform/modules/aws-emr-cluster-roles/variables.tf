@@ -1,15 +1,3 @@
-variable "kms_encrypt_key_for_s3" {
-  description = "AWS KMS Key to encrypt data at rest in AWS S3"
-  type        = string
-  default     = ""
-}
-
-variable "kms_encrypt_key_for_ebs" {
-  description = "AWS KMS Key to encrypt local EBS volumes in AWS EMR"
-  type        = string
-  default     = ""
-}
-
 variable "encryption_enabled" {
   description = "Whether or not to enable AWS EMR encryption for jobs (in transit and at rest)"
   type        = bool
