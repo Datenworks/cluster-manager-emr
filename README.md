@@ -27,6 +27,23 @@ You can procede to deployment if you already have these tools
 
 ### Deploy
 
+There a Terraform module provisioning the resources into aws account.
+Apply the module to create the necessaries resources into your AWS Account
+
+- Create the State Machine responsible for Cluster Manager
+- Create e SNS Topic to receive messages when the Cluster Manager fails
+- Create the roles for EMR Cluster
+- Can be added more custom roles by your desire and necessities
+
+```
+cd terraform/base
+terraform init
+```
+```
+terraform plan
+terraform apply
+```
+
 A compressed zip for the project requirements is necessary in order to be uploaded to AWS S3 bucket.
 This zip file must be behind the limits for AWS Lambda, one of them are size (<250MB)
 
@@ -44,24 +61,10 @@ e.g.:
 
 ```bash
 make ENV=dev \
-    deploy
-```
-
-There a Terraform module provisioning the resources into aws account.
-Apply the module to create the necessaries resources into your AWS Account
-
-- Create the State Machine responsible for Cluster Manager
-- Create e SNS Topic to receive messages when the Cluster Manager fails
-- Create the roles for EMR Cluster
-- Can be added more custom roles by your desire and necessities
-
-```
-cd terraform/base
-terraform init
-```
-```
-terraform plan
-terraform apply
+EMR_SLAVE_SG='security-group-for-slaves' \
+EMR_MASTER_SG='security-group-for-master' \
+EMR_SERVICE_ACCESS_SG='emr-service-security-group' \
+deploy
 ```
 
 ### Cleanup
@@ -90,34 +93,40 @@ Payload received by the State Machine:
 
 {
     "data":{
-        "name": "the-name-of-the-job",
-        "resource": "resource beign executed",
-        "namespace": "the-namespace-to-mount-the-argument: namespace.argname=value",
+        "name": "your-cluster-name",
+        "resource": "your-resource-name",
         "arguments": [
             {
-                "argument": "argument-name",
-                "value": "the-value-of-arg"
+                "Key": "--conf",
+                "Value": "yournamespace.blablabla.yourargument=yourvalue"
             }
         ],
-        "code_files": "the-path-to-code-files-zip in s3",
-        "entrypoint": "the-code-file-that-will-be-executed",
-        "mem_executor": "optional, default is 16G",
-        "mem_driver": "optional, default is 8G",
-        "master_type": "optional, default is m5.xlarge",
-        "slave_type": "optional(core), default is m5.2xlarge",
-        "count": "3",
-        "release": "emr_release",
-        "region": "emr_region",
-        "log_bucket": "uri for the log bucket",
-        "subnet": "subnet_id for execute the emr",
-        "spark_packages": ["package1", "package2", "keep empty if dont have"]
+        "pyfiles": "s3a://path_to_python_files.zip",
+        "subnet": "subnet-id",
+        "master_type": "m5.xlarge",
+        "core_type": "m5.2xlarge",
+        "count": "6",
+        "release": "emr-5.27.0",
+        "region": "us-east-1",
+        "log_bucket": "s3://log_bucket",
+        "entrypoint": "s3a://path_to_pyspark_file.py",
+        "mem_driver": "8G",
+        "mem_executor": "16G",
+        "spark_packages": ["sparkpackage1", "sparkpackage2"],
+        "jar_files": ["path_to_jarfile1.jar", "path_to_jarfile2.jar"],
+        "multiple_steps": "ENABLED / DISABLED",
+        "bootstrap_steps": [
+            {
+                "arguments": ["sudo", "pip", "install", "something"]
+            }
+        ]
     }
 }
 ```
 Also can be passed as base64 string.
 ```
 {
-    "data": "eyJqb2JfbmFtZSI6ICJ0aGUtbmFtZS1vZi10aGUtam9iIiwgInJlc291cmNlIjogInJlc291cmNlIGJlaWduIGV4ZWN1dGVkIiwgIm5hbWVzcGFjZSI6ICJ0aGUtbmFtZXNwYWNlLXRvLW1vdW50LXRoZS1hcmd1bWVudDogbmFtZXNwYWNlLmFyZ25hbWU9dmFsdWUiLCAiYXJndW1lbnRzIjogW3siYXJndW1lbnQiOiAiYXJndW1lbnQtbmFtZSIsICJ2YWx1ZSI6ICJ0aGUtdmFsdWUtb2YtYXJnIn1dLCAiY29kZV9maWxlcyI6ICJ0aGUtcGF0aC10by1jb2RlLWZpbGVzLXppcCBpbiBzMyIsICJjb2RlX2VudHJ5cG9pbnQiOiAidGhlLWNvZGUtZmlsZS10aGF0LXdpbGwtYmUtZXhlY3V0ZWQiLCAibWVtX2V4ZWN1dG9yIjogIm9wdGlvbmFsLCBkZWZhdWx0IGlzIDE2RyIsICJtZW1fZHJpdmVyIjogIm9wdGlvbmFsLCBkZWZhdWx0IGlzIDhHIiwgIm1hc3Rlcl90eXBlIjogIm9wdGlvbmFsLCBkZWZhdWx0IGlzIG01LnhsYXJnZSIsICJzbGF2ZV90eXBlIjogIm9wdGlvbmFsKGNvcmUpLCBkZWZhdWx0IGlzIG01LjJ4bGFyZ2UiLCAicmVsZWFzZSI6ICJlbXJfcmVsZWFzZSIsICJyZWdpb24iOiAiZW1yX3JlZ2lvbiIsICJsb2dfYnVja2V0IjogInVyaSBmb3IgdGhlIGxvZyBidWNrZXQiLCAic3VibmV0IjogInN1Ym5ldF9pZCBmb3IgZXhlY3V0ZSB0aGUgZW1yIiwgInNwYXJrX3BhY2thZ2VzIjogWyJwYWNrYWdlMSIsICJwYWNrYWdlMiIsICJrZWVwIGVtcHR5IGlmIGRvbnQgaGF2ZSJdfQ=="
+    "data": "eyJqb2JfbmFtZSI6ICJ0aGUtbmFtZS1vZi10aGUtam9iIiwgInJlc291cmNlIjogInJlc291cmNlIGJlaWduIGV4ZWN1dGVkIiwgIm5hbWVzcGFjZSI6ICJ0aGUtbmFtZXNwYWNlLXRvLW1vdW50LXRoZS1hcmd1bWVudDogbmFtZXNwYWNlLmFyZ25hbWU9dmFsdWUiLCAiYXJndW1lbnRzIjogW3siYXJndW1lbnQiOiAiYXJndW1lbnQtbmFtZSIsICJ2YWx1ZSI6ICJ0aGUtdmFsdWUtb2YtYXJnIn1dLCAiY29kZV9maWxlcyI6ICJ0aGUtcGF0aC10by1jb2RlLWZpbGVzLXppcCBpbiBzMyIsICJjb2RlX2VudHJ5cG9pbnQiOiAid"
 }
 ```
 ## Example Word Count
@@ -160,7 +169,10 @@ Payload to execute the example of wordcount:
         "region": "us-east-1",
         "log_bucket": "your-log-bukcket-uri",
         "subnet": "your-subnet",
-        "spark_packages": [""]
+        "spark_packages": [],
+        "jar_files": [],
+        "multiple_steps": "ENABLED",
+        "bootstrap_steps": []
     }
 }
 ```
