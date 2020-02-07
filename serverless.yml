@@ -7,6 +7,9 @@ provider:
   name: aws
   stage: ${env:ENV, 'dev'}
   runtime: python3.7
+  deploymentBucket:
+    name: ${env:DEPLOY_BUCKET, "serasaexperian-ecs-datalake-dev-serverless"}
+    blockPublicAccess: true
 
 plugins:
   - serverless-python-requirements

@@ -1,7 +1,50 @@
 data "aws_caller_identity" "current" {}
 
+module "aws_ecs_emr_encryption_kms_key" {
+  source = "../../modules/aws-kms-key"
+
+  policy = jsonencode({
+    Id      = "AwsEMREncryptionKeyPermissions"
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Sid    = "EMRClusterDefaultRole"
+        Effect = "Allow"
+        Principal = {
+          AWS = [
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/EMR_DefaultRole",
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/EMR_EC2_DefaultRole"
+          ]
+        }
+        Action   = "kms:*",
+        Resource = "*"
+      },
+      {
+        Sid    = "EnableRootIAMUserAccess"
+        Action = "kms:*"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Resource = "*"
+      }
+    ]
+  })
+
+  name        = "emr-data-encryption"
+  description = "AWS KMS key responsible for encryption of data (in transit and at rest) on AWS EMR."
+}
+
+
 module "aws_emr_cluster_roles" {
   source = "../modules/aws-emr-cluster-roles"
+
+  encryption_enabled          = true
+  security_configuration_name = "emr-data-encryption"
+
+  kms_encrypt_key_for_s3  = module.aws_ecs_emr_encryption_kms_key.alias
+  kms_encrypt_key_for_ebs = module.aws_ecs_emr_encryption_kms_key.alias
 }
 
 module "aws_alarms_sns_topic" {

@@ -1,35 +1,33 @@
-import boto3
+from lib.aws.emr.client import AwsEmrClient
+
+emr_client = AwsEmrClient()
+
+
+def is_step_running(step):
+    return step['Status']['State'] == 'PENDING' or \
+        step['Status']['State'] == 'RUNNING'
+
+
+def is_step_completed(step):
+    return step['Status']['State'] == 'COMPLETED'
 
 
 def execute(event, context):
     cluster_id = event.get("JobFlowId")
-    emr_client = boto3.client('emr')
-    steps = emr_client.list_steps(ClusterId=cluster_id)
-    step = steps.get("Steps")[0]
-    status = step.get("Status")
+    step_name = event.get("step_name")
 
-    if status.get("State") == "COMPLETED":
-        delete_cluster(emr_client, cluster_id)
-        return {"State": "COMPLETED"}
+    step = emr_client.\
+        get_step_by_name(cluster_id=cluster_id, step_name=step_name)
 
-    elif status.get("State") == "RUNNING" or \
-            status.get("State") == "PENDING":
+    steps_running = emr_client.list_steps_running(cluster_id=cluster_id)
+    if len(steps_running['Steps']) == 0:
+        emr_client.destroy_cluster(cluster_id)
+
+    if is_step_running(step):
         event.update({"State": "RUNNING"})
-        return event
-
+    elif is_step_completed(step):
+        event.update({"State": "COMPLETED"})
     else:
-        delete_cluster(emr_client, cluster_id)
-        return failed_step(status)
-
-
-def failed_step(status):
-    response = {
-        "State": "FAILED",
-        "Cause": status.get("FailureDetails").get("Reason", "Unknown"),
-        "Error": status.get("FailureDetails").get("Message", "Unknown")
-    }
-    return response
-
-
-def delete_cluster(emr_client, cluster_id):
-    emr_client.terminate_job_flows(JobFlowIds=[cluster_id])
+        event.update({"State": "FAILED"})
+        event.update(step['Status']['FailureDetails'])
+    return event
