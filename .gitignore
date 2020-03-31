@@ -41,3 +41,5 @@ override.tf.json
 # Serverless directories
 .serverless
 node_modules/
+package.json
+package-lock.json
