@@ -1,149 +1,76 @@
-import base64
-import boto3
-import json
-
 from datetime import datetime
+from os import getenv
+from lib.aws.emr.cluster import (AwsEmrCluster,
+                                 AwsEmrInstance,
+                                 AwsEmrInstanceGroup)
+
+from lib.aws.emr.step import AwsEmrStep
+from lib.aws.emr.client import AwsEmrClient
+from lib.aws.clustermanager.consumer import EmrInputParser
+import time
+from uuid import uuid4
+EMR_MASTER_SG = getenv('EMR_MASTER_SG')
+EMR_SLAVE_SG = getenv('EMR_SLAVE_SG')
+EMR_SERVICE_ACCESS_SG = getenv('EMR_SERVICE_ACCESS_SG')
+
+SECURITY_CONFIGURATION = getenv("SECURITY_CONFIGURATION")
+AUTOSCALING_ROLE = getenv("AUTOSCALING_ROLE")
+JOB_FLOW_ROLE = getenv("JOB_FLOW_ROLE")
+SERVICE_ROLE = getenv("SERVICE_ROLE")
 
 
 def execute(event, context):
-    if not isinstance(event, dict):
-        event = base64.b64decode(event)
-        event = json.loads(event.decode('utf-8'))
-
-    job_name = event.get('name')
-    resource = event.get('resource')
-    namespace = event.get('namespace')
-    mem_executor = event.get('mem_executor', '16G')
-    mem_driver = event.get('mem_driver', '8G')
-    custom_arguments = [{
-        "Key": "--conf", "Value": f"{namespace}."
-                                  f"{argument.get('argument')}"
-                                  f"={argument.get('value')}"}
-                        for argument in event.get("arguments")]
-
+    input_parse = EmrInputParser(event)
     date = datetime.now().isoformat()
-
-    prefix = "spark.hadoop."
-
-    connection = boto3.client('emr', region_name=event.get('region'))
-
-    spark_packages = ",".join(event.get("spark_packages"))
-
-    core_instance_count = int(event.get('count'))
-
-    instance_groups = [
-        {
-            "InstanceCount": 1,
-            "Market": "ON_DEMAND",
-            "Name": "MasterInstanceGroup",
-            "InstanceRole": "MASTER",
-            "InstanceType": event.get("master_type", "m5.xlarge")
-        },
-        {
-            "InstanceCount": core_instance_count,
-            "Market": "SPOT",
-            "Name": "CoreInstanceGroup",
-            "InstanceRole": "CORE",
-            "InstanceType": event.get("slave_type", "m5.2xlarge"),
-            "AutoScalingPolicy": {
-                "Constraints": {
-                    "MinCapacity": (core_instance_count // 2),
-                    "MaxCapacity": int(core_instance_count * 3)
-                },
-                "Rules": [
-                    {
-                        "Name": "Default-scale-out",
-                        "Description": "Replicates the default "
-                                       "scale-out rule in the console "
-                                       "for YARN memory.",
-                        "Action": {
-                            "SimpleScalingPolicyConfiguration": {
-                                "AdjustmentType": "CHANGE_IN_CAPACITY",
-                                "ScalingAdjustment": 1,
-                                "CoolDown": 300
-                            }
-                        },
-                        "Trigger": {
-                            "CloudWatchAlarmDefinition": {
-                                "ComparisonOperator": "LESS_THAN",
-                                "EvaluationPeriods": 1,
-                                "MetricName": "YARNMemoryAvailablePercentage",
-                                "Namespace": "AWS/ElasticMapReduce",
-                                "Period": 300,
-                                "Threshold": 15,
-                                "Statistic": "AVERAGE",
-                                "Unit": "PERCENT",
-                                "Dimensions": [
-                                    {
-                                        "Key": "JobFlowId",
-                                        "Value": "${emr.clusterId}"
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-    ]
-
-    # Not being used at the moment
-    instance_fleets = [
-                {
-                    'Name': 'CoreInstanceFleet',
-                    'InstanceFleetType': 'CORE',
-                    'TargetOnDemandCapacity': int(core_instance_count * .2),
-                    'TargetSpotCapacity': int(core_instance_count * .8),
-                    'InstanceTypeConfigs': [{
-                        'InstanceType': event.get("slave_type")
-                    }],
-                    'LaunchSpecifications': {
-                        'SpotSpecification': {
-                            'TimeoutDurationMinutes': 3,
-                            'TimeoutAction': 'SWITCH_TO_ON_DEMAND'
-                        }
-                    }
-                }
-            ]
+    emr_client = AwsEmrClient()
 
     arguments = ['spark-submit',
-                 '--conf', f'spark.executor.memory={mem_executor}',
-                 '--conf', f'spark.driver.memory={mem_driver}']
-    if spark_packages != '':
-        arguments.extend(['--packages', spark_packages])
+                 '--conf', f'spark.executor.memory={input_parse.mem_executor}',
+                 '--conf', f'spark.driver.memory={input_parse.mem_driver}']
 
-    for custom_argument in custom_arguments:
-        arguments.append(custom_argument['Key'])
-        arguments.append(f"{prefix}{custom_argument['Value']}")
+    arguments.extend(input_parse.spark_packages)
+    arguments.extend(input_parse.arguments)
+    arguments.extend(input_parse.jar_files)
+    arguments.extend(input_parse.pyfiles)
+    arguments.append(input_parse.entrypoint)
 
-    if event.get('pyfiles') is not None:
-        arguments.append('--py-files')
-        arguments.append(event.get('pyfiles'))
+    bootstrap_steps = input_parse.bootstrap_steps
+    aws_instance_group = \
+        AwsEmrInstanceGroup(master_type=input_parse.master_type,
+                            core_type=input_parse.core_type,
+                            core_instance_count=input_parse.count)
+    aws_instance = \
+        AwsEmrInstance(subnet_id=input_parse.subnet,
+                       master_security_group=EMR_MASTER_SG,
+                       core_security_group=EMR_SLAVE_SG,
+                       service_access_security_group=EMR_SERVICE_ACCESS_SG,
+                       instance_groups=aws_instance_group)
+    aws_cluster = \
+        AwsEmrCluster(cluster_name=input_parse.name,
+                      log_uri=input_parse.log_bucket,
+                      release=input_parse.release,
+                      applications=[{"Name": "Spark"}],
+                      instances=aws_instance,
+                      multiple_steps=input_parse.multiple_steps,
+                      auto_scaling_role=AUTOSCALING_ROLE,
+                      job_flow_role=JOB_FLOW_ROLE,
+                      service_role=SERVICE_ROLE)
 
-    arguments.append(event.get('entrypoint'))
-    response = connection.run_job_flow(
-        Name=f'{job_name}-{resource}-spark-job',
-        LogUri=event.get('log_bucket'),
-        ReleaseLabel=event.get('release'),
-        Applications=[{'Name': 'Spark'}],
-        Instances={
-            'KeepJobFlowAliveWhenNoSteps': True,
-            'TerminationProtected': False,
-            'InstanceGroups': instance_groups,
-            'Ec2SubnetId': event.get('subnet')
-        },
-        AutoScalingRole="EMR_AutoScaling_DefaultRole",
-        VisibleToAllUsers=True,
-        Steps=[{
-            'Name': f'{job_name}-{resource}-{date}',
-            'ActionOnFailure': 'CONTINUE',
-            'HadoopJarStep': {
-                'Jar': 'command-runner.jar',
-                'Args': arguments
-            }
-        }],
-        JobFlowRole='EMR_EC2_DefaultRole',
-        ServiceRole='EMR_DefaultRole'
-    )
+    for bootstrap_step in bootstrap_steps:
+        step = AwsEmrStep(step_name='bootstrap_step',
+                          arguments=bootstrap_step)
 
+        emr_client.execute_step(aws_cluster, step.get_step())
+        time.sleep(60)
+
+    step_name = f'{input_parse.name}-' \
+                f'{input_parse.resource}-' \
+                f'{date}-' \
+                f'{str(uuid4())}'
+
+    step = AwsEmrStep(step_name=step_name,
+                      arguments=arguments)
+    print(step.get_step())
+    response = emr_client.execute_step(aws_cluster, step.get_step())
+    response.update({"step_name": step_name})
     return response

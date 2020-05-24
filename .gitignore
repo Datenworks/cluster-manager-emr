@@ -16,6 +16,7 @@ var/
 .installed.cfg
 *.egg
 .vscode/
+.venv/
 # Local .terraform directories
 **/.terraform/*
 
